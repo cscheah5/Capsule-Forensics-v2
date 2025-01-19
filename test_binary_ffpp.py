@@ -23,6 +23,8 @@ from scipy.optimize import brentq
 from scipy.interpolate import interp1d
 from sklearn.metrics import roc_curve
 import model_big
+import time
+import psutil
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default ='databases/faceforensicspp', help='path to dataset')
@@ -73,7 +75,17 @@ if __name__ == '__main__':
     count = 0
     loss_test = 0
 
+    # Initialize timing and resource variables
+    total_inference_time = 0
+    num_samples = 0
+
+    # GPU memory tracking
+    torch.cuda.reset_peak_memory_stats(opt.gpu_id)
+
     for img_data, labels_data in tqdm(dataloader_test):
+
+        # Start timing
+        start_time = time.time()
 
         labels_data[labels_data > 1] = 1
         img_label = labels_data.numpy().astype(np.float)
@@ -86,6 +98,14 @@ if __name__ == '__main__':
 
         x = vgg_ext(input_v)
         classes, class_ = capnet(x, random=opt.random)
+
+        # End timing
+        end_time = time.time()
+        batch_time = end_time - start_time
+        total_inference_time += batch_time
+
+        # Update total samples
+        num_samples += img_data.size(0)
 
         output_dis = class_.data.cpu()
         output_pred = np.zeros((output_dis.shape[0]), dtype=np.float)
@@ -104,16 +124,28 @@ if __name__ == '__main__':
 
         count += 1
 
+    # Metrics
     acc_test = metrics.accuracy_score(tol_label, tol_pred)
     loss_test /= count
+    precision = metrics.precision_score(tol_label, tol_pred)
+    recall = metrics.recall_score(tol_label, tol_pred)
+    f1 = metrics.f1_score(tol_label, tol_pred)
+    confusion_matrix = metrics.confusion_matrix(tol_label, tol_pred)
 
     fpr, tpr, thresholds = roc_curve(tol_label, tol_pred_prob, pos_label=1)
     eer = brentq(lambda x : 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
 
+    max_memory_allocated = torch.cuda.max_memory_allocated(opt.gpu_id) / (1024**2)  # Convert to MB
+
+    average_inference_time = total_inference_time / num_samples
     # fnr = 1 - tpr
     # hter = (fpr + fnr)/2
 
     print('[Epoch %d] Test acc: %.2f   EER: %.2f' % (opt.id, acc_test*100, eer*100))
+    print(f"Precision: {precision}, Recall: {recall}, F1-Score: {f1}")
+    print(f"Confusion Matrix:\n{confusion_matrix}")
+    print(f"Average Inference Time per Sample: {average_inference_time:.4f} seconds")
+    print(f"Peak GPU Memory Usage: {max_memory_allocated:.2f} MB")
     text_writer.write('%d,%.2f,%.2f\n'% (opt.id, acc_test*100, eer*100))
 
     text_writer.flush()
