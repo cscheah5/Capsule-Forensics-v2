@@ -68,9 +68,9 @@ if __name__ == '__main__':
 
     ##################################################################################
 
-    tol_label = np.array([], dtype=np.float)
-    tol_pred = np.array([], dtype=np.float)
-    tol_pred_prob = np.array([], dtype=np.float)
+    tol_label = np.array([], dtype=np.float64)
+    tol_pred = np.array([], dtype=np.float64)
+    tol_pred_prob = np.array([], dtype=np.float64)
 
     count = 0
     loss_test = 0
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         start_time = time.time()
 
         labels_data[labels_data > 1] = 1
-        img_label = labels_data.numpy().astype(np.float)
+        img_label = labels_data.numpy().astype(np.float64)
 
         if opt.gpu_id >= 0:
             img_data = img_data.cuda(opt.gpu_id)
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         num_samples += img_data.size(0)
 
         output_dis = class_.data.cpu()
-        output_pred = np.zeros((output_dis.shape[0]), dtype=np.float)
+        output_pred = np.zeros((output_dis.shape[0]), dtype=np.float64)
 
         for i in range(output_dis.shape[0]):
             if output_dis[i,1] >= output_dis[i,0]:

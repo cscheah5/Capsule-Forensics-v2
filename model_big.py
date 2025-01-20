@@ -14,6 +14,7 @@ from torch import nn
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 import torchvision.models as models
+from torchvision.models import VGG19_Weights
 
 NO_CAPS=10
 
@@ -42,7 +43,7 @@ class VggExtractor(nn.Module):
     def __init__(self, train=False):
         super(VggExtractor, self).__init__()
 
-        self.vgg_1 = self.Vgg(models.vgg19(pretrained=True), 0, 18)
+        self.vgg_1 = self.Vgg(models.vgg19(weights=VGG19_Weights.DEFAULT), 0, 18)
         if train:
             self.vgg_1.train(mode=True)
             self.freeze_gradient()
